@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shalaka Gaidhani — Data & Operations Analyst · SpaceX</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black:    #000000;
+  --void:     #060608;
+  --deep:     #0C0C10;
+  --panel:    #111116;
+  --panel2:   #171720;
+  --surface:  #1C1C24;
+  --white:    #FFFFFF;
+  --off:      #E8E8EC;
+  --grey:     #8888A0;
+  --muted:    #44445A;
+  --border:   rgba(255,255,255,.08);
+  --border2:  rgba(255,255,255,.04);
+  --red:      #C1272D;
+  --red-l:    rgba(193,39,45,.12);
+  --red-g:    rgba(193,39,45,.06);
+  --mono:     'JetBrains Mono', monospace;
+  --head:     'Chakra Petch', sans-serif;
+  --body:     'Inter', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--black);color:var(--white);
+  font-family:var(--body);overflow-x:hidden;cursor:none;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── STARFIELD CANVAS ── */
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* ── CURSOR ── */
+#cur{
+  width:8px;height:8px;background:var(--white);border-radius:50%;
+  position:fixed;pointer-events:none;z-index:9999;
+  transform:translate(-50%,-50%);
+  transition:width .18s,height .18s,background .2s;
+}
+#cur-ring{
+  width:26px;height:26px;border:1px solid rgba(255,255,255,.3);
+  border-radius:50%;position:fixed;pointer-events:none;z-index:9998;
+  transform:translate(-50%,-50%);
+  transition:width .26s,height .26s;
+}
+
+/* ── TELEMETRY TICKER ── */
+.ticker{
+  background:var(--black);
+  border-bottom:1px solid var(--border);
+  padding:8px 0;overflow:hidden;white-space:nowrap;
+  position:relative;z-index:10;
+}
+.ticker-track{
+  display:inline-flex;animation:tick 40s linear infinite;
+}
+.t-item{
+  font-family:var(--mono);font-size:.55rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);padding:0 36px;
+}
+.t-item.lit{color:var(--red);}
+.t-sep{color:var(--muted);padding:0 4px;}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ── NAV ── */
+nav{
+  position:sticky;top:0;z-index:200;
+  background:rgba(0,0,0,.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.nav-i{
+  max-width:1280px;margin:0 auto;padding:0 56px;
+  height:66px;display:flex;align-items:center;justify-content:space-between;
+}
+.nav-logo{
+  font-family:var(--head);font-size:1rem;font-weight:700;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--white);
+  display:flex;align-items:center;gap:14px;
+}
+.nav-x{
+  width:28px;height:28px;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.6rem;font-weight:700;color:var(--red);letter-spacing:.05em;
+  font-family:var(--mono);position:relative;
+}
+.nav-x::before{content:'';position:absolute;inset:3px;border:1px solid rgba(193,39,45,.2);}
+.nav-links{display:flex;gap:0;list-style:none;}
+.nav-links a{
+  font-family:var(--mono);font-size:.6rem;font-weight:400;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--grey);
+  text-decoration:none;padding:8px 16px;transition:color .2s;
+}
+.nav-links a:hover{color:var(--white);}
+.nav-apply{
+  font-family:var(--mono);font-size:.62rem;font-weight:500;
+  letter-spacing:.12em;text-transform:uppercase;
+  padding:10px 24px;border:1px solid var(--white);
+  background:transparent;color:var(--white);
+  text-decoration:none;cursor:none;transition:all .2s;
+}
+.nav-apply:hover{background:var(--white);color:var(--black);}
+
+/* ── HERO ── */
+.hero-outer{
+  position:relative;min-height:100vh;
+  display:flex;flex-direction:column;justify-content:center;
+  overflow:hidden;z-index:1;
+  border-bottom:1px solid var(--border);
+}
+
+/* large "X" watermark */
+.hero-xmark{
+  position:absolute;right:-60px;top:50%;
+  transform:translateY(-50%);
+  font-family:var(--head);font-size:32vw;font-weight:700;
+  color:rgba(255,255,255,.018);line-height:1;
+  pointer-events:none;user-select:none;letter-spacing:-.04em;
+}
+
+/* trajectory line */
+.traj-svg{
+  position:absolute;bottom:0;left:0;width:100%;height:160px;
+  pointer-events:none;z-index:2;
+}
+.traj-path{
+  fill:none;stroke:rgba(193,39,45,.2);stroke-width:1.5;
+  stroke-dasharray:8 14;stroke-dashoffset:2000;
+  animation:drawTraj 4s 1.2s ease forwards;
+}
+.traj-dot{
+  fill:var(--red);filter:drop-shadow(0 0 8px var(--red));
+  opacity:0;animation:dotPop .4s 5s forwards;
+}
+@keyframes drawTraj{to{stroke-dashoffset:0}}
+@keyframes dotPop{to{opacity:1}}
+
+.hero{
+  max-width:1280px;margin:0 auto;padding:120px 56px 100px;
+  display:grid;grid-template-columns:1.1fr .9fr;
+  gap:80px;align-items:center;position:relative;z-index:3;
+}
+
+.hero-badge{
+  display:inline-flex;align-items:center;gap:10px;
+  font-family:var(--mono);font-size:.58rem;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--red);
+  margin-bottom:28px;
+  animation:fadeUp .9s ease both;
+}
+.hero-badge-line{width:20px;height:1px;background:var(--red);}
+
+.hero-name{
+  font-family:var(--head);font-weight:700;
+  font-size:clamp(4.5rem,8vw,8rem);
+  letter-spacing:-.01em;line-height:.85;
+  text-transform:uppercase;color:var(--white);
+  margin-bottom:4px;
+  animation:fadeUp .9s .07s ease both;
+}
+.hero-name-2{
+  font-family:var(--head);font-weight:300;font-style:italic;
+  font-size:clamp(4.5rem,8vw,8rem);
+  letter-spacing:-.01em;line-height:.95;
+  text-transform:uppercase;color:rgba(255,255,255,.18);
+  margin-bottom:36px;
+  animation:fadeUp .9s .13s ease both;
+}
+.hero-role{
+  font-family:var(--mono);font-size:.7rem;
+  letter-spacing:.18em;text-transform:uppercase;
+  color:var(--grey);margin-bottom:22px;
+  animation:fadeUp .9s .18s ease both;
+}
+.hero-desc{
+  font-size:.92rem;font-weight:300;line-height:1.9;color:var(--grey);
+  max-width:520px;margin-bottom:42px;
+  animation:fadeUp .9s .23s ease both;
+}
+.hero-desc strong{color:var(--white);font-weight:500;}
+
+.hero-btns{
+  display:flex;gap:12px;flex-wrap:wrap;
+  animation:fadeUp .9s .28s ease both;
+}
+.hbtn-w{
+  display:inline-flex;align-items:center;gap:10px;
+  background:var(--white);color:var(--black);
+  padding:13px 32px;
+  font-family:var(--mono);font-size:.65rem;font-weight:500;
+  letter-spacing:.12em;text-transform:uppercase;
+  text-decoration:none;cursor:none;transition:all .2s;
+}
+.hbtn-w:hover{background:var(--off);transform:translateY(-2px);}
+.hbtn-o{
+  display:inline-flex;align-items:center;gap:10px;
+  background:transparent;color:var(--white);
+  padding:13px 32px;
+  font-family:var(--mono);font-size:.65rem;font-weight:500;
+  letter-spacing:.12em;text-transform:uppercase;
+  text-decoration:none;cursor:none;
+  border:1px solid var(--border);transition:all .2s;
+}
+.hbtn-o:hover{border-color:rgba(255,255,255,.4);transform:translateY(-2px);}
+
+/* telemetry stats bar */
+.hero-stats{
+  display:flex;gap:0;margin-top:52px;
+  border:1px solid var(--border);
+  animation:fadeUp .9s .34s ease both;
+}
+.hs{
+  flex:1;padding:18px 20px;border-right:1px solid var(--border);
+  transition:background .2s;
+}
+.hs:last-child{border-right:none;}
+.hs:hover{background:var(--panel);}
+.hs-n{
+  font-family:var(--head);font-size:2.4rem;font-weight:700;
+  color:var(--white);line-height:1;margin-bottom:4px;
+}
+.hs-l{
+  font-family:var(--mono);font-size:.52rem;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  line-height:1.4;
+}
+
+/* ── HERO RIGHT — MISSION CARD ── */
+.hero-right{animation:fadeUp .9s .2s ease both;}
+
+.mission-card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  position:relative;overflow:hidden;
+  margin-bottom:10px;
+}
+.mission-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,var(--red),transparent);
+}
+.mc-header{
+  padding:16px 22px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.mc-title{
+  font-family:var(--mono);font-size:.56rem;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+}
+.mc-live{
+  display:flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:.54rem;color:var(--red);
+}
+.mc-live-dot{
+  width:5px;height:5px;background:var(--red);border-radius:50%;
+  animation:livepulse 1.5s infinite;box-shadow:0 0 6px var(--red);
+}
+@keyframes livepulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.mc-body{padding:22px;}
+
+.mc-candidate{
+  display:flex;align-items:center;gap:14px;margin-bottom:22px;
+}
+.mc-av{
+  width:46px;height:46px;background:var(--red);
+  font-family:var(--head);font-size:1rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--white);flex-shrink:0;
+  clip-path:polygon(8px 0%,100% 0%,100% calc(100% - 8px),calc(100% - 8px) 100%,0% 100%,0% 8px);
+}
+.mc-cname{
+  font-family:var(--head);font-size:1rem;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--white);
+}
+.mc-ctitle{
+  font-family:var(--mono);font-size:.58rem;color:var(--muted);
+  margin-top:2px;
+}
+
+.mc-bars{display:flex;flex-direction:column;gap:11px;margin-bottom:20px;}
+.mcb{}
+.mcb-top{display:flex;justify-content:space-between;margin-bottom:4px;}
+.mcb-name{font-size:.68rem;font-weight:400;color:var(--grey);}
+.mcb-pct{font-family:var(--mono);font-size:.58rem;color:var(--red);}
+.mcb-track{height:2px;background:var(--surface);overflow:hidden;}
+.mcb-fill{
+  height:100%;background:var(--white);
+  transform-origin:left;
+  animation:barIn 1.5s cubic-bezier(.4,0,.2,1) both;
+}
+@keyframes barIn{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+.mc-tags{display:flex;flex-wrap:wrap;gap:5px;}
+.mc-tag{
+  font-family:var(--mono);font-size:.52rem;
+  padding:3px 9px;background:var(--surface);border:1px solid var(--border);
+  color:var(--grey);transition:all .18s;
+}
+.mc-tag:hover{border-color:rgba(255,255,255,.2);color:var(--white);}
+.mc-tag.r{background:var(--red-g);border-color:rgba(193,39,45,.2);color:var(--red);}
+
+.mc-status{
+  background:var(--panel);border:1px solid var(--border);
+  padding:13px 18px;display:flex;align-items:center;gap:12px;
+}
+.mc-s-icon{font-size:1.1rem;}
+.mc-s-text{
+  font-family:var(--mono);font-size:.6rem;
+  color:var(--white);letter-spacing:.08em;
+}
+.mc-s-sub{
+  font-family:var(--mono);font-size:.54rem;
+  color:var(--muted);margin-top:2px;
+}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── SECTIONS ── */
+.sec-outer{position:relative;z-index:1;}
+.sec-i{max-width:1280px;margin:0 auto;padding:96px 56px;}
+
+.sec-kicker{
+  font-family:var(--mono);font-size:.58rem;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--red);
+  display:flex;align-items:center;gap:10px;margin-bottom:12px;
+}
+.sec-kicker::before{content:'_';color:var(--muted);}
+.sec-h{
+  font-family:var(--head);font-size:clamp(2rem,3.5vw,3.2rem);
+  font-weight:700;text-transform:uppercase;letter-spacing:.02em;
+  color:var(--white);margin-bottom:10px;line-height:1;
+}
+.sec-h em{font-style:italic;font-weight:300;color:rgba(255,255,255,.35);}
+.sec-p{
+  font-size:.88rem;font-weight:300;color:var(--grey);
+  max-width:560px;margin-bottom:54px;line-height:1.85;
+}
+
+/* ── FIT ── */
+.fit-bg{background:var(--void);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.fit-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;background:var(--border);border:1px solid var(--border);
+}
+.fc{
+  background:var(--panel);padding:28px 24px;
+  transition:background .2s;
+  opacity:0;transform:translateY(16px);
+  transition:opacity .5s,transform .5s,background .2s;
+}
+.fc.visible{opacity:1;transform:translateY(0);}
+.fc:hover{background:var(--panel2);}
+.fc-num{
+  font-family:var(--head);font-size:2.8rem;font-weight:700;
+  color:rgba(255,255,255,.05);line-height:1;margin-bottom:12px;
+  transition:color .2s;
+}
+.fc:hover .fc-num{color:rgba(193,39,45,.12);}
+.fc-req{
+  font-family:var(--mono);font-size:.52rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--red);margin-bottom:7px;
+}
+.fc-match{
+  font-family:var(--head);font-size:.96rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;
+  color:var(--white);margin-bottom:10px;line-height:1.2;
+}
+.fc-proof{font-size:.75rem;font-weight:300;line-height:1.8;color:var(--grey);}
+.fc-check{
+  display:inline-flex;align-items:center;gap:6px;
+  margin-top:14px;font-family:var(--mono);font-size:.54rem;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(255,255,255,.45);
+}
+.fc-check::before{content:'✓';color:var(--white);}
+
+/* ── SKILLS ── */
+.sk-bg{background:var(--deep);}
+.sk-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;background:var(--border);border:1px solid var(--border);
+}
+.sk{
+  background:var(--panel);padding:28px 26px;
+  transition:background .2s;
+  opacity:0;transform:translateY(14px);
+  transition:opacity .5s,transform .5s,background .2s;cursor:none;
+}
+.sk.visible{opacity:1;transform:translateY(0);}
+.sk:hover{background:var(--panel2);}
+.sk.w2{grid-column:span 2;}
+.sk-icon{
+  width:36px;height:36px;
+  background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1rem;margin-bottom:14px;
+  clip-path:polygon(6px 0%,100% 0%,100% calc(100% - 6px),calc(100% - 6px) 100%,0% 100%,0% 6px);
+}
+.sk-name{
+  font-family:var(--head);font-size:.84rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.08em;
+  color:var(--white);margin-bottom:7px;
+}
+.sk-copy{font-size:.73rem;font-weight:300;line-height:1.8;color:var(--grey);margin-bottom:14px;}
+.sk-pills{display:flex;flex-wrap:wrap;gap:5px;}
+.sk-pill{
+  font-family:var(--mono);font-size:.52rem;padding:3px 9px;
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--grey);transition:all .18s;
+}
+.sk-pill:hover{border-color:rgba(255,255,255,.2);color:var(--white);}
+.sk-list{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:5px;margin-top:8px;
+}
+.sk-li{
+  display:flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:.58rem;font-weight:400;
+  color:var(--grey);padding:8px 10px;
+  background:var(--surface);border:1px solid var(--border);
+  transition:all .18s;
+}
+.sk-li:hover{border-color:rgba(255,255,255,.15);color:var(--white);}
+.sk-li-d{width:3px;height:3px;border-radius:50%;background:var(--red);flex-shrink:0;}
+
+/* ── EXPERIENCE ── */
+.exp-bg{background:var(--black);}
+.exp-stack{display:flex;flex-direction:column;gap:1px;background:var(--border);}
+.exp-item{
+  background:var(--panel);
+  opacity:0;transform:translateX(-20px);
+  transition:opacity .6s,transform .6s,box-shadow .2s;
+}
+.exp-item.visible{opacity:1;transform:translateX(0);}
+.exp-item:hover{box-shadow:inset 1px 0 0 var(--red);}
+
+.exp-top{
+  padding:22px 28px 18px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:flex-start;
+  gap:16px;flex-wrap:wrap;
+}
+.exp-role{
+  font-family:var(--head);font-size:1.05rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;
+  color:var(--white);margin-bottom:5px;
+}
+.exp-co{
+  font-size:.74rem;font-weight:300;color:var(--grey);
+  display:flex;align-items:center;gap:7px;
+}
+.exp-co::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--red);flex-shrink:0;}
+.exp-badge{
+  font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;
+  padding:5px 12px;background:var(--surface);
+  border:1px solid var(--border);color:var(--grey);
+  white-space:nowrap;flex-shrink:0;
+}
+.exp-body{padding:18px 28px 24px;}
+.exp-ul{list-style:none;display:flex;flex-direction:column;gap:9px;margin-bottom:18px;}
+.exp-ul li{
+  font-size:.79rem;font-weight:300;line-height:1.82;color:var(--grey);
+  padding-left:18px;position:relative;
+}
+.exp-ul li::before{
+  content:'';position:absolute;left:0;top:10px;
+  width:8px;height:1px;background:rgba(255,255,255,.2);
+}
+.exp-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.exp-chip{
+  font-family:var(--mono);font-size:.52rem;padding:3px 8px;
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--grey);transition:all .15s;
+}
+.exp-chip:hover{border-color:rgba(255,255,255,.2);color:var(--white);}
+
+/* ── DASHBOARDS ── */
+.dash-bg{background:var(--void);border-top:1px solid var(--border);}
+.dash-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;background:var(--border);border:1px solid var(--border);
+  margin-bottom:2px;
+}
+.dash-card{
+  background:var(--panel);padding:26px;
+  position:relative;overflow:hidden;cursor:none;
+  transition:background .2s;
+  opacity:0;transform:translateY(18px);
+  transition:opacity .5s,transform .5s,background .2s;
+}
+.dash-card.visible{opacity:1;transform:translateY(0);}
+.dash-card:hover{background:var(--panel2);}
+.dash-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:var(--red);transform:scaleX(0);transform-origin:left;
+  transition:transform .3s;
+  box-shadow:0 0 8px var(--red);
+}
+.dash-card:hover::after{transform:scaleX(1);}
+
+/* mock dashboard preview */
+.dash-preview{
+  background:var(--surface);border:1px solid var(--border);
+  height:120px;margin-bottom:16px;padding:10px;
+  position:relative;overflow:hidden;
+}
+.mock-bar-row{
+  display:flex;align-items:flex-end;gap:3px;
+  height:55px;padding:0 6px;margin-bottom:6px;
+}
+.mock-bar{
+  flex:1;background:rgba(255,255,255,.06);border-radius:1px;
+  transition:height .5s;animation:mockBarIn .8s ease both;
+}
+.mock-bar.r{background:rgba(193,39,45,.35);}
+.mock-bar.w{background:rgba(255,255,255,.18);}
+@keyframes mockBarIn{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.mock-line{height:1px;background:var(--border);margin-bottom:5px;}
+.mock-dots{display:flex;gap:4px;align-items:center;padding:0 4px;}
+.mock-dot{width:4px;height:4px;border-radius:50%;flex-shrink:0;}
+.mock-dot-r{background:var(--red);}
+.mock-dot-w{background:rgba(255,255,255,.3);}
+.mock-dot-g{background:rgba(100,200,100,.4);}
+.mock-sparkline{flex:1;height:20px;overflow:hidden;}
+.mock-area{fill:none;stroke:rgba(255,255,255,.2);stroke-width:1.2;}
+
+.dash-num{
+  font-family:var(--head);font-size:.62rem;font-weight:700;
+  color:var(--muted);letter-spacing:.14em;text-transform:uppercase;
+  margin-bottom:5px;
+}
+.dash-name{font-family:var(--head);font-size:.9rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--white);margin-bottom:8px;}
+.dash-desc{font-size:.74rem;font-weight:300;line-height:1.75;color:var(--grey);margin-bottom:14px;}
+.dash-tags{display:flex;flex-wrap:wrap;gap:5px;}
+.dash-tag{
+  font-family:var(--mono);font-size:.5rem;padding:2px 7px;
+  background:var(--red-g);border:1px solid rgba(193,39,45,.15);color:var(--red);
+}
+
+/* GitHub link banner */
+.gh-banner{
+  background:var(--panel);border:1px solid var(--border);
+  padding:20px 28px;display:flex;align-items:center;justify-content:space-between;
+  gap:20px;flex-wrap:wrap;
+  transition:border-color .2s,background .2s;cursor:none;
+}
+.gh-banner:hover{border-color:rgba(255,255,255,.2);background:var(--panel2);}
+.gh-left{display:flex;align-items:center;gap:16px;}
+.gh-icon{font-size:1.6rem;}
+.gh-text{font-family:var(--head);font-size:.88rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--white);}
+.gh-sub{font-family:var(--mono);font-size:.58rem;color:var(--grey);margin-top:3px;}
+.gh-btn{
+  font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;
+  text-transform:uppercase;padding:10px 22px;
+  border:1px solid var(--border);color:var(--white);background:transparent;
+  text-decoration:none;cursor:none;transition:all .2s;white-space:nowrap;
+}
+.gh-btn:hover{background:var(--white);color:var(--black);}
+
+/* ── IMPACT ── */
+.impact-bg{background:var(--deep);border-top:1px solid var(--border);}
+.impact-cells{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--border);border:1px solid var(--border);
+}
+.ic{
+  background:var(--panel);padding:36px 24px;
+  transition:background .2s;
+  opacity:0;transform:translateY(12px);
+  transition:opacity .5s,transform .5s,background .2s;
+}
+.ic.visible{opacity:1;transform:translateY(0);}
+.ic:hover{background:var(--panel2);}
+.ic-ico{font-size:1.2rem;margin-bottom:12px;display:block;}
+.ic-n{
+  font-family:var(--head);font-size:3rem;font-weight:700;
+  color:var(--white);line-height:1;margin-bottom:8px;
+}
+.ic-d{font-size:.72rem;font-weight:300;line-height:1.65;color:var(--grey);}
+
+/* ── EDUCATION ── */
+.edu-bg{background:var(--black);border-top:1px solid var(--border);}
+.edu-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));
+  gap:1px;background:var(--border);border:1px solid var(--border);
+}
+.edu-c{
+  background:var(--panel);padding:26px;
+  transition:background .2s;
+  opacity:0;transform:translateY(14px);
+  transition:opacity .5s,transform .5s,background .2s;
+}
+.edu-c.visible{opacity:1;transform:translateY(0);}
+.edu-c:hover{background:var(--panel2);}
+.edu-line{height:1px;background:linear-gradient(90deg,var(--red),transparent);margin-bottom:18px;}
+.edu-ico{font-size:1.2rem;margin-bottom:10px;display:block;}
+.edu-yr{font-family:var(--mono);font-size:.54rem;letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-bottom:5px;}
+.edu-deg{font-size:.88rem;font-weight:600;color:var(--white);margin-bottom:3px;line-height:1.3;}
+.edu-sch{font-size:.7rem;font-weight:300;color:var(--grey);margin-bottom:12px;line-height:1.4;}
+.edu-badge{
+  font-family:var(--mono);font-size:.52rem;
+  padding:3px 9px;background:var(--surface);border:1px solid var(--border);
+  color:var(--grey);display:inline-block;
+}
+
+/* ── CONTACT ── */
+.contact-bg{
+  background:var(--void);border-top:1px solid var(--border);
+  position:relative;overflow:hidden;z-index:1;
+}
+.contact-bg::before{
+  content:'SPACEX';
+  font-family:var(--head);font-size:20rem;font-weight:700;
+  color:rgba(255,255,255,.015);
+  position:absolute;bottom:-60px;right:-60px;
+  line-height:1;pointer-events:none;letter-spacing:-.02em;
+}
+.contact-inner{
+  max-width:760px;margin:0 auto;padding:112px 56px;
+  text-align:center;position:relative;z-index:2;
+}
+.contact-mission{
+  font-family:var(--mono);font-size:.6rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--red);margin-bottom:28px;
+}
+.contact-h{
+  font-family:var(--head);font-size:clamp(2.5rem,5.5vw,5rem);
+  font-weight:700;text-transform:uppercase;letter-spacing:.02em;
+  color:var(--white);margin-bottom:14px;line-height:1;
+}
+.contact-h em{font-style:italic;font-weight:300;color:rgba(255,255,255,.25);}
+.contact-sub{font-size:.88rem;font-weight:300;color:var(--grey);margin-bottom:42px;line-height:1.85;}
+.contact-btns{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;}
+.cbtn{
+  display:flex;align-items:center;gap:9px;padding:13px 26px;
+  font-family:var(--mono);font-size:.64rem;font-weight:500;
+  letter-spacing:.12em;text-transform:uppercase;
+  text-decoration:none;cursor:none;transition:all .2s;
+}
+.cbtn-w{background:var(--white);color:var(--black);border:1px solid var(--white);}
+.cbtn-w:hover{background:var(--off);transform:translateY(-2px);}
+.cbtn-o{background:transparent;color:var(--white);border:1px solid var(--border);}
+.cbtn-o:hover{border-color:rgba(255,255,255,.35);transform:translateY(-2px);}
+.contact-foot{
+  margin-top:52px;font-family:var(--mono);font-size:.52rem;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+}
+
+/* reveal */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .75s,transform .75s;}
+.reveal.visible{opacity:1;transform:translateY(0);}
+
+@media(max-width:960px){
+  .nav-links{display:none;}
+  .nav-i{padding:0 20px;}
+  .hero{grid-template-columns:1fr;padding:90px 20px 70px;gap:52px;}
+  .hero-xmark{display:none;}
+  .sec-i{padding:64px 20px;}
+  .fit-grid{grid-template-columns:1fr;}
+  .sk-grid{grid-template-columns:1fr;}
+  .sk.w2{grid-column:span 1;}
+  .impact-cells{grid-template-columns:repeat(2,1fr);}
+  .dash-grid{grid-template-columns:1fr;}
+  .sk-list{grid-template-columns:repeat(2,1fr);}
+  .ticker,.status-bar{padding:7px 20px;}
+}
+</style>
+</head>
+<body>
+
+<!-- STARFIELD -->
+<canvas id="stars"></canvas>
+<div id="cur"></div>
+<div id="cur-ring"></div>
+
+<!-- TELEMETRY TICKER -->
+<div class="ticker">
+  <div class="ticker-track">
+    <span class="t-item lit">SpaceX</span><span class="t-item">Data & Operations Analyst</span><span class="t-sep">·</span>
+    <span class="t-item">SQL · Python · BigQuery</span><span class="t-sep">·</span>
+    <span class="t-item">Power BI · Tableau</span><span class="t-sep">·</span>
+    <span class="t-item">10TB+ Data Processed</span><span class="t-sep">·</span>
+    <span class="t-item">50% Manual Effort Eliminated</span><span class="t-sep">·</span>
+    <span class="t-item">ETL · Azure · Databricks</span><span class="t-sep">·</span>
+    <span class="t-item">Anomaly Detection · Forecasting</span><span class="t-sep">·</span>
+    <span class="t-item lit">Shalaka Gaidhani · San Jose, CA</span><span class="t-sep">·</span>
+    <span class="t-item">SpaceX</span><span class="t-sep">·</span>
+    <span class="t-item">Data & Operations Analyst</span><span class="t-sep">·</span>
+    <span class="t-item">SQL · Python · BigQuery</span><span class="t-sep">·</span>
+    <span class="t-item">Power BI · Tableau</span><span class="t-sep">·</span>
+    <span class="t-item">10TB+ Data Processed</span><span class="t-sep">·</span>
+    <span class="t-item">50% Manual Effort Eliminated</span><span class="t-sep">·</span>
+    <span class="t-item">ETL · Azure · Databricks</span><span class="t-sep">·</span>
+    <span class="t-item">Anomaly Detection · Forecasting</span><span class="t-sep">·</span>
+    <span class="t-item lit">Shalaka Gaidhani · San Jose, CA</span><span class="t-sep">·</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-i">
+    <div class="nav-logo">
+      <div class="nav-x">SX</div>
+      Shalaka Gaidhani
+    </div>
+    <ul class="nav-links">
+      <li><a href="#fit">Mission Fit</a></li>
+      <li><a href="#skills">Capabilities</a></li>
+      <li><a href="#experience">Flight Log</a></li>
+      <li><a href="#dashboards">Dashboards</a></li>
+      <li><a href="#education">Clearance</a></li>
+    </ul>
+    <a href="#contact" class="nav-apply">Contact ↗</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero-outer">
+  <div class="hero-xmark">X</div>
+  <svg class="traj-svg" viewBox="0 0 1280 160" preserveAspectRatio="none">
+    <path class="traj-path" d="M0,130 Q200,130 320,100 Q500,55 640,70 Q800,88 960,45 Q1100,10 1260,18"/>
+    <circle class="traj-dot" cx="1260" cy="18" r="5"/>
+  </svg>
+
+  <div class="hero">
+    <div>
+      <div class="hero-badge"><div class="hero-badge-line"></div>Data & Operations Analyst · SpaceX Application</div>
+      <h1 class="hero-name">Shalaka</h1>
+      <div class="hero-name-2">Gaidhani</div>
+      <div class="hero-role">// Data Analytics · Operations · ETL · BI Dashboards · Production Systems</div>
+      <p class="hero-desc">
+        Data & Operations Analyst with <strong>5+ years</strong> analyzing large operational datasets, building automated reporting pipelines, and translating complex analytics into <strong>actionable insights for engineering and business teams</strong>. Skilled in SQL, Python, BigQuery, Azure, and BI tools — built for the data intensity and operational rigor of SpaceX.
+      </p>
+      <div class="hero-btns">
+        <a href="#fit" class="hbtn-w">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          View Mission Fit
+        </a>
+        <a href="#dashboards" class="hbtn-o">View Dashboards ↗</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hs">
+          <div class="hs-n" data-target="10">0<span style="font-size:1.2rem">TB+</span></div>
+          <div class="hs-l">Healthcare Data Analyzed</div>
+        </div>
+        <div class="hs">
+          <div class="hs-n" data-target="50">0<span style="font-size:1.2rem">%</span></div>
+          <div class="hs-l">Manual Effort Eliminated</div>
+        </div>
+        <div class="hs">
+          <div class="hs-n" data-target="20">0<span style="font-size:1.2rem">%</span></div>
+          <div class="hs-l">Fraud False Positives ↓</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MISSION CARD -->
+    <div class="hero-right">
+      <div class="mission-card">
+        <div class="mc-header">
+          <span class="mc-title">MISSION_PROFILE.DAT</span>
+          <span class="mc-live"><span class="mc-live-dot"></span>LIVE</span>
+        </div>
+        <div class="mc-body">
+          <div class="mc-candidate">
+            <div class="mc-av">SG</div>
+            <div>
+              <div class="mc-cname">Shalaka Gaidhani</div>
+              <div class="mc-ctitle">// Data & Ops Analyst · San Jose, CA 95134</div>
+            </div>
+          </div>
+          <div class="mc-bars">
+            <div class="mcb">
+              <div class="mcb-top"><span class="mcb-name">SQL & Data Infrastructure</span><span class="mcb-pct">96%</span></div>
+              <div class="mcb-track"><div class="mcb-fill" style="width:96%"></div></div>
+            </div>
+            <div class="mcb">
+              <div class="mcb-top"><span class="mcb-name">Python & ETL Automation</span><span class="mcb-pct">91%</span></div>
+              <div class="mcb-track"><div class="mcb-fill" style="width:91%;animation-delay:.2s"></div></div>
+            </div>
+            <div class="mcb">
+              <div class="mcb-top"><span class="mcb-name">Power BI / Tableau</span><span class="mcb-pct">93%</span></div>
+              <div class="mcb-track"><div class="mcb-fill" style="width:93%;animation-delay:.3s"></div></div>
+            </div>
+            <div class="mcb">
+              <div class="mcb-top"><span class="mcb-name">BigQuery / Azure / Databricks</span><span class="mcb-pct">88%</span></div>
+              <div class="mcb-track"><div class="mcb-fill" style="width:88%;animation-delay:.4s"></div></div>
+            </div>
+            <div class="mcb">
+              <div class="mcb-top"><span class="mcb-name">Anomaly Detection & Forecasting</span><span class="mcb-pct">87%</span></div>
+              <div class="mcb-track"><div class="mcb-fill" style="width:87%;animation-delay:.5s"></div></div>
+            </div>
+          </div>
+          <div class="mc-tags">
+            <span class="mc-tag r">SQL</span><span class="mc-tag r">Python</span>
+            <span class="mc-tag r">BigQuery</span>
+            <span class="mc-tag">Power BI</span><span class="mc-tag">Tableau</span>
+            <span class="mc-tag">Azure</span><span class="mc-tag">Databricks</span>
+            <span class="mc-tag">PySpark</span><span class="mc-tag">A/B Testing</span>
+          </div>
+        </div>
+      </div>
+      <div class="mc-status">
+        <div class="mc-s-icon">🚀</div>
+        <div>
+          <div class="mc-s-text">AVAILABLE · AUTHORIZED TO WORK IN US</div>
+          <div class="mc-s-sub">San Jose, CA · Onsite / Hawthorne area · No Sponsorship Required</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MISSION FIT -->
+<div class="fit-bg sec-outer" id="fit">
+  <div class="sec-i">
+    <div class="reveal">
+      <div class="sec-kicker">MISSION ALIGNMENT</div>
+      <div class="sec-h">Cleared for <em>This Role</em></div>
+      <div class="sec-p">Every requirement in the SpaceX Data & Operations Analyst JD maps precisely to my proven track record. Here's the evidence.</div>
+    </div>
+    <div class="fit-grid">
+      <div class="fc">
+        <div class="fc-num">01</div>
+        <div class="fc-req">Requirement</div>
+        <div class="fc-match">Large Operational Dataset Analysis</div>
+        <p class="fc-proof">Analyzed 10TB+ of healthcare, behavioral, and financial transaction data at Vibrent Health and Winjit. Built analytics pipelines using SQL, Python, BigQuery, and PySpark to transform raw operational data into structured KPI datasets for engineering and business teams.</p>
+        <div class="fc-check">Direct Match</div>
+      </div>
+      <div class="fc" style="transition-delay:.07s">
+        <div class="fc-num">02</div>
+        <div class="fc-req">Requirement</div>
+        <div class="fc-match">Automated Reporting Pipelines</div>
+        <p class="fc-proof">Built automated Python and SQL pipelines at Realogic Works reducing manual reporting effort by 50%. Developed ETL workflows using Azure Data Factory and BigQuery, with Power BI and Tableau dashboards deployed to executive leadership cycles.</p>
+        <div class="fc-check">Direct Match</div>
+      </div>
+      <div class="fc" style="transition-delay:.14s">
+        <div class="fc-num">03</div>
+        <div class="fc-req">Requirement</div>
+        <div class="fc-match">KPI Dashboards & Performance Monitoring</div>
+        <p class="fc-proof">Designed standardized KPI frameworks in Tableau and Power BI for operational and financial performance monitoring. Built anomaly detection dashboards for real-time transaction monitoring at Winjit, with tracking of fraud patterns and performance variances.</p>
+        <div class="fc-check">Direct Match</div>
+      </div>
+      <div class="fc" style="transition-delay:.21s">
+        <div class="fc-num">04</div>
+        <div class="fc-req">Requirement</div>
+        <div class="fc-match">Anomaly Detection & Trend Analysis</div>
+        <p class="fc-proof">Analyzed high-volume financial transaction data to detect fraud patterns and performance anomalies at Winjit. Conducted root cause investigations into operational discrepancies. Reduced fraud detection false positives by 20% through behavioral A/B testing and statistical analysis.</p>
+        <div class="fc-check">Direct Match</div>
+      </div>
+      <div class="fc" style="transition-delay:.28s">
+        <div class="fc-num">05</div>
+        <div class="fc-req">Requirement</div>
+        <div class="fc-match">Cross-Functional Engineering Collaboration</div>
+        <p class="fc-proof">Collaborated with researchers, engineers, program managers, and business analysts at Vibrent Health and Realogic Works. Translated complex analytics into actionable recommendations for technical and non-technical audiences — from data engineers to C-suite leadership.</p>
+        <div class="fc-check">Direct Match</div>
+      </div>
+      <div class="fc" style="transition-delay:.35s">
+        <div class="fc-num">06</div>
+        <div class="fc-req">Requirement</div>
+        <div class="fc-match">Cloud Data Platforms & Distributed Processing</div>
+        <p class="fc-proof">Production experience with Google BigQuery, Databricks, Azure Data Factory, AWS S3, and PySpark for large-scale distributed data processing. Built end-to-end ELT pipelines from cloud storage to analytical data warehouses supporting operational review systems.</p>
+        <div class="fc-check">Direct Match</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SKILLS / CAPABILITIES -->
+<div class="sk-bg sec-outer" id="skills">
+  <div class="sec-i">
+    <div class="reveal">
+      <div class="sec-kicker">SYSTEMS & CAPABILITIES</div>
+      <div class="sec-h">Technical <em>Arsenal</em></div>
+      <div class="sec-p">Full-stack data and operations analytics capability — from distributed cloud pipelines and anomaly detection to executive-ready dashboards and statistical modeling.</div>
+    </div>
+    <div class="sk-grid">
+      <div class="sk w2 reveal">
+        <div class="sk-icon">🗄️</div>
+        <div class="sk-name">SQL & Data Engineering</div>
+        <p class="sk-copy">Advanced SQL — joins, window functions, aggregations, CTEs — across BigQuery, Databricks, and enterprise data warehouses. Built scalable ETL/ELT pipelines using Python, Azure Data Factory, PySpark, and AWS S3 to process 10TB+ operational datasets.</p>
+        <div class="sk-list">
+          <div class="sk-li"><span class="sk-li-d"></span>Advanced SQL</div>
+          <div class="sk-li"><span class="sk-li-d"></span>Window Functions</div>
+          <div class="sk-li"><span class="sk-li-d"></span>BigQuery</div>
+          <div class="sk-li"><span class="sk-li-d"></span>Azure Data Factory</div>
+          <div class="sk-li"><span class="sk-li-d"></span>PySpark</div>
+          <div class="sk-li"><span class="sk-li-d"></span>ETL / ELT</div>
+        </div>
+      </div>
+      <div class="sk reveal" style="transition-delay:.08s">
+        <div class="sk-icon">🐍</div>
+        <div class="sk-name">Python & Automation</div>
+        <p class="sk-copy">Pandas, NumPy, Matplotlib, Plotly for data transformation, statistical analysis, and visualization automation. Automated reconciliation workflows cutting manual effort by 50%.</p>
+        <div class="sk-pills">
+          <span class="sk-pill">Python</span><span class="sk-pill">Pandas / NumPy</span>
+          <span class="sk-pill">Automation Scripts</span>
+          <span class="sk-pill">Matplotlib / Plotly</span>
+        </div>
+      </div>
+      <div class="sk reveal" style="transition-delay:.16s">
+        <div class="sk-icon">📊</div>
+        <div class="sk-name">BI & Executive Dashboards</div>
+        <p class="sk-copy">Power BI (DAX, dataflows), Tableau, Google Data Studio. Built production dashboards used by NIH leadership, Gainwell executives, and banking stakeholders for operational decision-making.</p>
+        <div class="sk-pills">
+          <span class="sk-pill">Power BI</span><span class="sk-pill">DAX</span>
+          <span class="sk-pill">Tableau</span><span class="sk-pill">Data Studio</span>
+          <span class="sk-pill">KPI Standardization</span>
+        </div>
+      </div>
+      <div class="sk reveal" style="transition-delay:.24s">
+        <div class="sk-icon">🔍</div>
+        <div class="sk-name">Anomaly Detection & Statistical Analysis</div>
+        <p class="sk-copy">Regression analysis, hypothesis testing, ANOVA, bootstrapping, probability modeling, forecasting, and anomaly detection. Reduced fraud false positives 20% at Winjit; improved patient outcome prediction 15% at Vibrent Health.</p>
+        <div class="sk-pills">
+          <span class="sk-pill">Anomaly Detection</span><span class="sk-pill">A/B Testing</span>
+          <span class="sk-pill">Regression</span><span class="sk-pill">Forecasting</span>
+          <span class="sk-pill">Statistical Modeling</span>
+        </div>
+      </div>
+      <div class="sk w2 reveal" style="transition-delay:.32s">
+        <div class="sk-icon">☁️</div>
+        <div class="sk-name">Cloud Platforms & Distributed Processing</div>
+        <p class="sk-copy">Production-grade experience with Google BigQuery, Databricks, Azure Data Factory, AWS S3, and PySpark. Built large-scale distributed analytics pipelines for financial transaction monitoring, healthcare data processing, and operational KPI systems across cloud-native architectures.</p>
+        <div class="sk-list">
+          <div class="sk-li"><span class="sk-li-d"></span>BigQuery</div>
+          <div class="sk-li"><span class="sk-li-d"></span>Databricks</div>
+          <div class="sk-li"><span class="sk-li-d"></span>Azure Data Factory</div>
+          <div class="sk-li"><span class="sk-li-d"></span>AWS S3</div>
+          <div class="sk-li"><span class="sk-li-d"></span>PySpark</div>
+          <div class="sk-li"><span class="sk-li-d"></span>Data Warehousing</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPERIENCE -->
+<div class="exp-bg sec-outer" id="experience">
+  <div class="sec-i">
+    <div class="reveal">
+      <div class="sec-kicker">FLIGHT LOG</div>
+      <div class="sec-h">Work <em>Experience</em></div>
+      <div class="sec-p">5+ years of hands-on data and operations analytics — from healthcare systems processing 10TB+ datasets to financial fraud monitoring and automated operational reporting pipelines.</div>
+    </div>
+    <div class="exp-stack">
+
+      <div class="exp-item">
+        <div class="exp-top">
+          <div>
+            <div class="exp-role">Statistical Data Scientist / Data Analyst</div>
+            <div class="exp-co">Realogic Works LLC · Sunnyvale, United States</div>
+          </div>
+          <div class="exp-badge">SEP 2024 — PRESENT</div>
+        </div>
+        <div class="exp-body">
+          <ul class="exp-ul">
+            <li>Develop analytics pipelines using Python, SQL, BigQuery, and Azure Data Factory to transform operational and financial data into structured datasets supporting KPI dashboards used in leadership reviews.</li>
+            <li>Design standardized metrics and reporting frameworks in Tableau and Power BI, improving consistency of operational performance monitoring across business teams.</li>
+            <li>Analyze operational and financial datasets to detect anomalies, identify performance drivers, and highlight process inefficiencies impacting business operations.</li>
+            <li>Automate reconciliation and cost tracking workflows using Python and SQL, reducing manual reporting effort by 50% and improving reporting accuracy.</li>
+            <li>Collaborate with business, engineering, and analytics teams to define reporting requirements and improve data workflows supporting enterprise operations.</li>
+            <li>Communicate analytical findings through dashboards and executive-ready reports translating complex datasets into actionable insights for operational decision-making.</li>
+          </ul>
+          <div class="exp-chips">
+            <span class="exp-chip">SQL</span><span class="exp-chip">Python</span>
+            <span class="exp-chip">BigQuery</span><span class="exp-chip">Azure Data Factory</span>
+            <span class="exp-chip">Power BI</span><span class="exp-chip">Tableau</span>
+            <span class="exp-chip">Anomaly Detection</span><span class="exp-chip">KPI Design</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="exp-item" style="transition-delay:.1s">
+        <div class="exp-top">
+          <div>
+            <div class="exp-role">Sr. Data Analyst — Analytics & Operations</div>
+            <div class="exp-co">Vibrent Digital Health Solutions (NIH) · Pune, India</div>
+          </div>
+          <div class="exp-badge">NOV 2019 — AUG 2022</div>
+        </div>
+        <div class="exp-body">
+          <ul class="exp-ul">
+            <li>Analyzed 10TB+ of healthcare program and behavioral datasets using SQL and Python to identify trends affecting program performance and operational outcomes.</li>
+            <li>Developed predictive models and statistical analyses improving patient outcome prediction by 15%, supporting data-driven program planning decisions for NIH leadership.</li>
+            <li>Collaborated with researchers, engineers, and program managers to translate analytical insights into improvements for digital health systems and operational workflows.</li>
+            <li>Designed Tableau dashboards and analytical reports used by NIH stakeholders to monitor research performance metrics and operational progress in real time.</li>
+            <li>Built structured digital data collection workflows using REDCap and Qualtrics, reducing study deployment timelines by 25%.</li>
+          </ul>
+          <div class="exp-chips">
+            <span class="exp-chip">SQL</span><span class="exp-chip">Python</span>
+            <span class="exp-chip">10TB+ Data</span><span class="exp-chip">Tableau</span>
+            <span class="exp-chip">Predictive Modeling</span><span class="exp-chip">NIH</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="exp-item" style="transition-delay:.2s">
+        <div class="exp-top">
+          <div>
+            <div class="exp-role">Data & Operations Analyst</div>
+            <div class="exp-co">Winjit Technologies · India</div>
+          </div>
+          <div class="exp-badge">OCT 2015 — OCT 2019</div>
+        </div>
+        <div class="exp-body">
+          <ul class="exp-ul">
+            <li>Analyzed large-scale financial transaction datasets to identify fraud patterns and operational risks across digital payment platforms — directly analogous to production system anomaly monitoring.</li>
+            <li>Developed distributed analytics pipelines using SQL, PySpark, BigQuery, and AWS S3 to process high-volume financial datasets at production scale.</li>
+            <li>Built monitoring dashboards in Tableau and Google Data Studio enabling stakeholders to track anomalies and operational risk indicators in real time.</li>
+            <li>Conducted behavioral A/B testing experiments that reduced fraud detection false positives by 20%, improving operational system reliability.</li>
+            <li>Evaluated marketing campaign performance and revenue metrics for Sony Music digital initiatives — demonstrating analytical range across diverse operational domains.</li>
+          </ul>
+          <div class="exp-chips">
+            <span class="exp-chip">PySpark</span><span class="exp-chip">BigQuery</span>
+            <span class="exp-chip">AWS S3</span><span class="exp-chip">A/B Testing</span>
+            <span class="exp-chip">Fraud Detection</span><span class="exp-chip">Tableau</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARDS -->
+<div class="dash-bg sec-outer" id="dashboards">
+  <div class="sec-i">
+    <div class="reveal">
+      <div class="sec-kicker">LIVE WORK SAMPLES</div>
+      <div class="sec-h">Dashboard <em>Portfolio</em></div>
+      <div class="sec-p">Production-quality Power BI and Tableau dashboards built from real data — demonstrating the exact visualization and reporting capability SpaceX needs for operational analytics.</div>
+    </div>
+    <div class="dash-grid">
+
+      <!-- Balance Sheet Dashboard -->
+      <div class="dash-card">
+        <div class="dash-preview">
+          <div class="mock-bar-row" style="transform-origin:bottom">
+            <div class="mock-bar" style="height:40%;animation-delay:.1s"></div>
+            <div class="mock-bar r" style="height:70%;animation-delay:.15s"></div>
+            <div class="mock-bar" style="height:55%;animation-delay:.2s"></div>
+            <div class="mock-bar w" style="height:90%;animation-delay:.25s"></div>
+            <div class="mock-bar" style="height:45%;animation-delay:.3s"></div>
+            <div class="mock-bar r" style="height:65%;animation-delay:.35s"></div>
+            <div class="mock-bar" style="height:30%;animation-delay:.4s"></div>
+            <div class="mock-bar w" style="height:80%;animation-delay:.45s"></div>
+          </div>
+          <div class="mock-line"></div>
+          <div class="mock-dots">
+            <div class="mock-dot mock-dot-r"></div>
+            <div class="mock-dot mock-dot-w"></div>
+            <div class="mock-dot mock-dot-g"></div>
+            <svg class="mock-sparkline" viewBox="0 0 80 20">
+              <polyline class="mock-area" points="0,18 15,12 28,15 42,6 55,10 70,4 80,7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="dash-num">01 / POWER BI</div>
+        <div class="dash-name">Financial Balance Sheet</div>
+        <p class="dash-desc">Multi-page financial dashboard tracking assets, liabilities, and equity across reporting periods with drill-through capability and variance analysis.</p>
+        <div class="dash-tags">
+          <span class="dash-tag">Power BI</span><span class="dash-tag">DAX</span><span class="dash-tag">Financial KPIs</span>
+        </div>
+      </div>
+
+      <!-- Customer Churn Dashboard -->
+      <div class="dash-card" style="transition-delay:.08s">
+        <div class="dash-preview">
+          <div class="mock-bar-row">
+            <div class="mock-bar r" style="height:85%;animation-delay:.12s"></div>
+            <div class="mock-bar" style="height:50%;animation-delay:.17s"></div>
+            <div class="mock-bar r" style="height:70%;animation-delay:.22s"></div>
+            <div class="mock-bar" style="height:35%;animation-delay:.27s"></div>
+            <div class="mock-bar w" style="height:95%;animation-delay:.32s"></div>
+            <div class="mock-bar" style="height:60%;animation-delay:.37s"></div>
+          </div>
+          <div class="mock-line"></div>
+          <div class="mock-dots">
+            <div class="mock-dot mock-dot-r"></div>
+            <div class="mock-dot mock-dot-g"></div>
+            <svg class="mock-sparkline" viewBox="0 0 80 20">
+              <polyline class="mock-area" points="0,14 12,18 25,10 38,15 52,8 65,12 80,5"/>
+            </svg>
+          </div>
+        </div>
+        <div class="dash-num">02 / POWER BI</div>
+        <div class="dash-name">Customer Churn Analytics</div>
+        <p class="dash-desc">Predictive churn analysis dashboard with customer segmentation, risk scoring, engagement trend tracking, and retention intervention signals.</p>
+        <div class="dash-tags">
+          <span class="dash-tag">Churn Modeling</span><span class="dash-tag">Segmentation</span><span class="dash-tag">Risk Scoring</span>
+        </div>
+      </div>
+
+      <!-- Customer Risk Dashboard -->
+      <div class="dash-card" style="transition-delay:.16s">
+        <div class="dash-preview">
+          <div class="mock-bar-row">
+            <div class="mock-bar" style="height:30%;animation-delay:.14s"></div>
+            <div class="mock-bar w" style="height:75%;animation-delay:.19s"></div>
+            <div class="mock-bar r" style="height:60%;animation-delay:.24s"></div>
+            <div class="mock-bar" style="height:45%;animation-delay:.29s"></div>
+            <div class="mock-bar" style="height:85%;animation-delay:.34s"></div>
+            <div class="mock-bar r" style="height:55%;animation-delay:.39s"></div>
+            <div class="mock-bar w" style="height:40%;animation-delay:.44s"></div>
+          </div>
+          <div class="mock-line"></div>
+          <div class="mock-dots">
+            <div class="mock-dot mock-dot-r"></div>
+            <div class="mock-dot mock-dot-w"></div>
+            <svg class="mock-sparkline" viewBox="0 0 80 20">
+              <polyline class="mock-area" points="0,8 14,15 27,10 40,18 54,12 68,7 80,14"/>
+            </svg>
+          </div>
+        </div>
+        <div class="dash-num">03 / POWER BI</div>
+        <div class="dash-name">Customer Risk Analysis</div>
+        <p class="dash-desc">Risk scoring and monitoring dashboard with anomaly flagging, pattern detection, historical comparison, and operational risk visibility for stakeholder review.</p>
+        <div class="dash-tags">
+          <span class="dash-tag">Risk Monitoring</span><span class="dash-tag">Anomaly Detection</span><span class="dash-tag">Power BI</span>
+        </div>
+      </div>
+
+      <!-- Income Statement -->
+      <div class="dash-card" style="transition-delay:.24s">
+        <div class="dash-preview">
+          <div class="mock-bar-row">
+            <div class="mock-bar w" style="height:65%;animation-delay:.16s"></div>
+            <div class="mock-bar" style="height:80%;animation-delay:.21s"></div>
+            <div class="mock-bar r" style="height:45%;animation-delay:.26s"></div>
+            <div class="mock-bar" style="height:90%;animation-delay:.31s"></div>
+            <div class="mock-bar w" style="height:55%;animation-delay:.36s"></div>
+            <div class="mock-bar" style="height:70%;animation-delay:.41s"></div>
+          </div>
+          <div class="mock-line"></div>
+          <div class="mock-dots">
+            <div class="mock-dot mock-dot-g"></div>
+            <div class="mock-dot mock-dot-r"></div>
+            <svg class="mock-sparkline" viewBox="0 0 80 20">
+              <polyline class="mock-area" points="0,16 13,10 26,14 40,6 53,11 66,5 80,9"/>
+            </svg>
+          </div>
+        </div>
+        <div class="dash-num">04 / POWER BI</div>
+        <div class="dash-name">Income Statement Dashboard</div>
+        <p class="dash-desc">Revenue, cost, and margin tracking across business units with period-over-period comparison, forecasting overlays, and executive-ready summary views.</p>
+        <div class="dash-tags">
+          <span class="dash-tag">Revenue Analytics</span><span class="dash-tag">Forecasting</span><span class="dash-tag">Margin Tracking</span>
+        </div>
+      </div>
+
+      <!-- Tableau Services -->
+      <div class="dash-card" style="transition-delay:.32s">
+        <div class="dash-preview">
+          <div class="mock-bar-row">
+            <div class="mock-bar" style="height:55%;animation-delay:.18s"></div>
+            <div class="mock-bar r" style="height:85%;animation-delay:.23s"></div>
+            <div class="mock-bar" style="height:40%;animation-delay:.28s"></div>
+            <div class="mock-bar w" style="height:70%;animation-delay:.33s"></div>
+            <div class="mock-bar r" style="height:60%;animation-delay:.38s"></div>
+            <div class="mock-bar" style="height:90%;animation-delay:.43s"></div>
+          </div>
+          <div class="mock-line"></div>
+          <div class="mock-dots">
+            <div class="mock-dot mock-dot-w"></div>
+            <div class="mock-dot mock-dot-r"></div>
+            <svg class="mock-sparkline" viewBox="0 0 80 20">
+              <polyline class="mock-area" points="0,12 12,7 25,16 38,10 52,4 65,13 80,8"/>
+            </svg>
+          </div>
+        </div>
+        <div class="dash-num">05 / TABLEAU</div>
+        <div class="dash-name">Services Performance</div>
+        <p class="dash-desc">Tableau dashboard tracking service-level KPIs, throughput metrics, and operational performance indicators with drill-down into service category and time dimension.</p>
+        <div class="dash-tags">
+          <span class="dash-tag">Tableau</span><span class="dash-tag">Service KPIs</span><span class="dash-tag">Operational</span>
+        </div>
+      </div>
+
+      <!-- Multi-Metric Summary -->
+      <div class="dash-card" style="transition-delay:.4s">
+        <div class="dash-preview">
+          <div class="mock-bar-row">
+            <div class="mock-bar w" style="height:72%;animation-delay:.2s"></div>
+            <div class="mock-bar" style="height:88%;animation-delay:.25s"></div>
+            <div class="mock-bar" style="height:48%;animation-delay:.3s"></div>
+            <div class="mock-bar r" style="height:65%;animation-delay:.35s"></div>
+            <div class="mock-bar w" style="height:92%;animation-delay:.4s"></div>
+            <div class="mock-bar" style="height:38%;animation-delay:.45s"></div>
+          </div>
+          <div class="mock-line"></div>
+          <div class="mock-dots">
+            <div class="mock-dot mock-dot-r"></div>
+            <div class="mock-dot mock-dot-w"></div>
+            <div class="mock-dot mock-dot-g"></div>
+            <svg class="mock-sparkline" viewBox="0 0 80 20">
+              <polyline class="mock-area" points="0,10 14,16 28,8 42,14 56,5 70,12 80,7"/>
+            </svg>
+          </div>
+        </div>
+        <div class="dash-num">06 / TABLEAU + POWER BI</div>
+        <div class="dash-name">Multi-Metric Summary</div>
+        <p class="dash-desc">Executive summary dashboard consolidating cross-source metrics — financial, operational, and engagement KPIs — into a single leadership-facing view for decision-making.</p>
+        <div class="dash-tags">
+          <span class="dash-tag">Multi-Source</span><span class="dash-tag">Executive</span><span class="dash-tag">KPI Rollup</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- GitHub link -->
+    <div style="margin-top:2px;">
+      <a href="https://github.com/GaidhaniShalaka/PowerBI-Tableau-Dashboard-Portfolio" target="_blank" class="gh-banner" style="text-decoration:none;">
+        <div class="gh-left">
+          <div class="gh-icon">⚡</div>
+          <div>
+            <div class="gh-text">Full Dashboard Portfolio on GitHub</div>
+            <div class="gh-sub">github.com/GaidhaniShalaka/PowerBI-Tableau-Dashboard-Portfolio · All source files & screenshots</div>
+          </div>
+        </div>
+        <div class="gh-btn">View on GitHub ↗</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- IMPACT -->
+<div class="impact-bg sec-outer">
+  <div class="sec-i" style="padding-top:72px;padding-bottom:72px;">
+    <div class="reveal" style="margin-bottom:44px;">
+      <div class="sec-kicker">MISSION METRICS</div>
+      <div class="sec-h" style="margin-bottom:0;">Quantified <em>Impact</em></div>
+    </div>
+    <div class="impact-cells">
+      <div class="ic">
+        <span class="ic-ico">📡</span>
+        <div class="ic-n" data-target="10">0<span style="font-size:1.5rem">TB+</span></div>
+        <div class="ic-d">Healthcare and operational datasets analyzed end-to-end with SQL, Python, and BigQuery</div>
+      </div>
+      <div class="ic" style="transition-delay:.1s">
+        <span class="ic-ico">⚡</span>
+        <div class="ic-n" data-target="50">0<span style="font-size:1.5rem">%</span></div>
+        <div class="ic-d">Manual reporting effort eliminated through Python and SQL automation pipelines</div>
+      </div>
+      <div class="ic" style="transition-delay:.2s">
+        <span class="ic-ico">🎯</span>
+        <div class="ic-n" data-target="20">0<span style="font-size:1.5rem">%</span></div>
+        <div class="ic-d">Fraud detection false positives reduced through behavioral A/B testing at Winjit</div>
+      </div>
+      <div class="ic" style="transition-delay:.3s">
+        <span class="ic-ico">📈</span>
+        <div class="ic-n" data-target="15">0<span style="font-size:1.5rem">%</span></div>
+        <div class="ic-d">Patient outcome prediction accuracy improved through statistical modeling at Vibrent/NIH</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDUCATION -->
+<div class="edu-bg sec-outer" id="education">
+  <div class="sec-i">
+    <div class="reveal">
+      <div class="sec-kicker">CLEARANCE LEVEL</div>
+      <div class="sec-h">Education & <em>Certifications</em></div>
+    </div>
+    <div class="edu-grid">
+      <div class="edu-c">
+        <div class="edu-line"></div>
+        <span class="edu-ico">🎓</span>
+        <div class="edu-yr">2022 — 2024</div>
+        <div class="edu-deg">M.S. Data Science</div>
+        <div class="edu-sch">Michigan Technological University · Houghton, US</div>
+        <span class="edu-badge">GPA 3.7 / 4.0</span>
+      </div>
+      <div class="edu-c" style="transition-delay:.07s">
+        <div class="edu-line"></div>
+        <span class="edu-ico">💻</span>
+        <div class="edu-yr">2014 — 2016</div>
+        <div class="edu-deg">M.S. Computer Science</div>
+        <div class="edu-sch">University of Pune · India</div>
+        <span class="edu-badge">GPA 3.6 / 4.0</span>
+      </div>
+      <div class="edu-c" style="transition-delay:.14s">
+        <div class="edu-line"></div>
+        <span class="edu-ico">📐</span>
+        <div class="edu-yr">APRIL 2024</div>
+        <div class="edu-deg">Mathematical & Statistical Sciences</div>
+        <div class="edu-sch">Michigan Technological University</div>
+        <span class="edu-badge">CERTIFIED</span>
+      </div>
+      <div class="edu-c" style="transition-delay:.21s">
+        <div class="edu-line"></div>
+        <span class="edu-ico">📊</span>
+        <div class="edu-yr">GOOGLE</div>
+        <div class="edu-deg">Advanced Google Analytics</div>
+        <div class="edu-sch">Ads Monetization · Performance Analysis</div>
+        <span class="edu-badge">CERTIFIED</span>
+      </div>
+      <div class="edu-c" style="transition-delay:.28s">
+        <div class="edu-line"></div>
+        <span class="edu-ico">📖</span>
+        <div class="edu-yr">2015</div>
+        <div class="edu-deg">Peer-Reviewed Publication</div>
+        <div class="edu-sch">Int'l Journal of Advanced Research in CS · Vol 6, Issue 8</div>
+        <span class="edu-badge">PUBLISHED</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTACT -->
+<div class="contact-bg sec-outer" id="contact">
+  <div class="contact-inner">
+    <div class="contact-mission reveal">// MISSION: SPACEX · DATA & OPERATIONS ANALYST · 2025</div>
+    <h2 class="contact-h reveal">Ready to Help<br><em>SpaceX</em><br>Move Faster.</h2>
+    <p class="contact-sub reveal">From 10TB data pipelines to real-time anomaly detection dashboards — I build the analytical infrastructure that helps engineering teams identify inefficiencies, monitor production systems, and make faster data-driven decisions. Let's talk.</p>
+    <div class="contact-btns reveal">
+      <a href="mailto:shalakagnine9@gmail.com" class="cbtn cbtn-w">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
+        shalakagnine9@gmail.com
+      </a>
+      <a href="tel:+14087310352" class="cbtn cbtn-o">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 11a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        +1 (408) 731-0352
+      </a>
+      <a href="https://github.com/GaidhaniShalaka/PowerBI-Tableau-Dashboard-Portfolio" target="_blank" class="cbtn cbtn-o">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+        Dashboard Portfolio
+      </a>
+    </div>
+    <div class="contact-foot">Shalaka Gaidhani · Data & Operations Analyst · SpaceX Application · 2025</div>
+  </div>
+</div>
+
+<script>
+// ── STARFIELD ──
+const canvas=document.getElementById('stars'),ctx=canvas.getContext('2d');
+let W,H,stars=[];
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+function mkStar(){return{x:Math.random()*W,y:Math.random()*H,r:Math.random()*.9+.1,o:Math.random(),d:Math.random()*.002+.0005};}
+function init(){resize();stars=Array.from({length:220},mkStar);}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  stars.forEach(s=>{
+    s.o+=s.d;if(s.o>1||s.o<0)s.d*=-1;
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${s.o*0.7})`;ctx.fill();
+  });
+  requestAnimationFrame(draw);
+}
+init();draw();
+window.addEventListener('resize',()=>{resize();stars=Array.from({length:220},mkStar);});
+
+// ── CURSOR ──
+const cur=document.getElementById('cur'),ring=document.getElementById('cur-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+(function loop(){rx+=(mx-rx)*.11;ry+=(my-ry)*.11;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(loop);})();
+document.querySelectorAll('a,button,.sk,.dash-card,.exp-item,.ic,.fc,.edu-c,.hs,.mc-tag,.gh-banner').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur.style.width='14px';cur.style.height='14px';ring.style.width='42px';ring.style.height='42px';});
+  el.addEventListener('mouseleave',()=>{cur.style.width='8px';cur.style.height='8px';ring.style.width='26px';ring.style.height='26px';});
+});
+
+// ── SCROLL REVEAL ──
+const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');});},{threshold:0.07});
+document.querySelectorAll('.reveal,.sk,.exp-item,.ic,.fc,.dash-card,.edu-c').forEach(el=>obs.observe(el));
+
+// ── COUNTERS ──
+function mkCounter(el){
+  const span=el.querySelector('span'),sufHTML=span?span.outerHTML:'';
+  let n=0,tgt=+el.dataset.target,step=tgt/70;
+  const t=setInterval(()=>{n+=step;if(n>=tgt){n=tgt;clearInterval(t);}el.innerHTML=Math.floor(n)+sufHTML;},14);
+}
+const heroObs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.querySelectorAll('[data-target]').forEach(mkCounter);heroObs.unobserve(e.target);}});},{threshold:.5});
+const hs=document.querySelector('.hero-stats');if(hs)heroObs.observe(hs);
+
+const impObs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.querySelectorAll('[data-target]').forEach(mkCounter);impObs.unobserve(e.target);}});},{threshold:.3});
+const ig=document.querySelector('.impact-cells');if(ig)impObs.observe(ig);
+
+// ── STAGGER ──
+document.querySelectorAll('.exp-item').forEach((el,i)=>el.style.transitionDelay=i*.12+'s');
+document.querySelectorAll('.dash-card').forEach((el,i)=>el.style.transitionDelay=i*.08+'s');
+document.querySelectorAll('.edu-c').forEach((el,i)=>el.style.transitionDelay=i*.07+'s');
+document.querySelectorAll('.fc').forEach((el,i)=>el.style.transitionDelay=i*.07+'s');
+</script>
+</body>
+</html>
